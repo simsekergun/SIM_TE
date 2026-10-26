@@ -1,0 +1,39 @@
+clear; %  close all;
+set(0, 'DefaultFigureCreateFcn', @(h,~) set(h, 'Renderer', 'painters'))
+%% 1. Surface-field convergence vs N (TE and TM)
+cases = { 'Glass BK7, r = 200 nm, \lambda = 633 nm', 200, 633, eps_bk7(633)};
+Ns = [6 8 12 16 20 24 32 48 64 72 96 128];
+err = zeros(size(cases,1), numel(Ns), 2);
+pols = {'TE','TM'};
+
+for c = 1:size(cases,1)
+    a = cases{c,2}; 
+    lam = cases{c,3}; 
+    ep = cases{c,4};
+    n = sqrt((sqrt(real(ep).^2+imag(ep).^2)+real(ep))/2);
+    circumf = 2*pi*a/lam;    
+    for ip = 1:2
+        for k = 1:numel(Ns)
+            o = sim2d(struct('type','circle','a',a), lam, ep, Ns(k), struct('pol',pols{ip}));
+            M = mie_cyl(a, lam, ep, o.theta, struct('pol',pols{ip}));
+            err(c,k,ip) = max(abs(o.U - M.U))/max(abs(M.U));
+        end
+        fprintf('%-30s %s: ', cases{c,1}, pols{ip}); fprintf('%8.1e', err(c,:,ip)); fprintf('\n');
+    end
+end
+
+ppw = Ns/circumf;
+errors = err(:,:,1).';
+save die_results 'ppw' 'errors'
+
+
+figure(1); clf;
+semilogy(Ns/circumf, err(:,:,1).', 'o-'); grid on;
+xlabel('Points per wavelength'); 
+ylabel('Maximum Relative Error'); 
+grid on;
+legend(cases(:,1), 'Location','northeast');
+print -dpng figure_error_vs_ppw_die
+
+
+
